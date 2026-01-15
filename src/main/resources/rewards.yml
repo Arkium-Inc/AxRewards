@@ -1,0 +1,28 @@
+# DOCUMENTATION: https://docs.artillex-studios.com/axrewards.html
+# ITEM BUILDER: https://docs.artillex-studios.com/item-builder.html
+
+# ----- REWARDS -----
+
+example:
+  slot: 11
+  # in seconds
+  # you can set it to -1 for it to never automatically refresh
+  cooldown: 86400
+  # you can create as many item/command rewards as you would like!
+  # these will be run/given when a player claims this reward
+  claim-commands:
+    - "say %player% has claimed their daily reward!"
+  claim-items:
+    - material: IRON_INGOT
+      amount: 1
+
+permission-example:
+  slot: 15
+  cooldown: 86400
+  # you can set the permission to any value, it does not have to start with axrewards
+  permission: "axrewards.permissionreward"
+  claim-commands:
+    - "say %player% has claimed their premium daily reward!"
+  claim-items:
+    - material: DIAMOND
+      amount: 1

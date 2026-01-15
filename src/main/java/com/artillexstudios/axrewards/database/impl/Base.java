@@ -1,30 +1,17 @@
 package com.artillexstudios.axrewards.database.impl;
 
-import com.artillexstudios.axrewards.database.Converter3;
 import com.artillexstudios.axrewards.database.Database;
-import com.artillexstudios.axrewards.guis.data.Menu;
-import com.artillexstudios.axrewards.guis.data.MenuManager;
+import com.artillexstudios.axrewards.guis.data.RewardsManager;
 import com.artillexstudios.axrewards.guis.data.Reward;
-import com.artillexstudios.axrewards.utils.SQLUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 import org.bukkit.OfflinePlayer;
 
-import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Map;
 
 public abstract class Base implements Database {
     private QueryRunner runner;
-
-    private final String CREATE_TABLE1 = """
-            CREATE TABLE IF NOT EXISTS axrewards_menus (
-                id INT NOT NULL AUTO_INCREMENT,
-                name VARCHAR(128) NOT NULL,
-                PRIMARY KEY (id), UNIQUE (name)
-            );
-    """;
 
     private final String CREATE_TABLE2 = """
             CREATE TABLE IF NOT EXISTS axrewards_players (
@@ -39,8 +26,7 @@ public abstract class Base implements Database {
             CREATE TABLE IF NOT EXISTS axrewards_rewards (
                 id INT NOT NULL AUTO_INCREMENT,
                 name VARCHAR(128) NOT NULL,
-                menu_id INT NOT NULL,
-                PRIMARY KEY (id), UNIQUE (name, menu_id)
+                PRIMARY KEY (id), UNIQUE (name)
             );
     """;
 
@@ -54,14 +40,6 @@ public abstract class Base implements Database {
             );
     """;
 
-    private final String INSERT_MENU = """
-            INSERT INTO axrewards_menus (name) VALUES (?)
-    """;
-
-    private final String SELECT_MENU = """
-            SELECT id FROM axrewards_menus WHERE name = ? LIMIT 1
-    """;
-
     private final String SELECT_PLAYER_BY_UUID = """
             SELECT id FROM axrewards_players WHERE uuid = ?
     """;
@@ -71,11 +49,11 @@ public abstract class Base implements Database {
     """;
 
     private final String INSERT_REWARD = """
-            INSERT INTO axrewards_rewards (name, menu_id) VALUES (?, ?)
+            INSERT INTO axrewards_rewards (name) VALUES (?, ?)
     """;
 
     private final String SELECT_REWARD = """
-            SELECT id FROM axrewards_rewards WHERE name = ? AND menu_id = ?
+            SELECT id FROM axrewards_rewards WHERE name = ?
     """;
 
     private final String LAST_CLAIM = """
@@ -88,11 +66,6 @@ public abstract class Base implements Database {
 
     private final String RESET_REWARD_SPECIFIC = """
             DELETE FROM axrewards_cooldowns WHERE player_id = ? AND reward_id = ?
-    """;
-
-    private final String RESET_REWARD_MENU = """
-            DELETE FROM axrewards_cooldowns WHERE player_id = ? AND reward_id IN 
-            (SELECT id FROM axrewards_rewards WHERE menu_id = ?)
     """;
 
     private final String RESET_REWARD_ALL = """
@@ -113,7 +86,6 @@ public abstract class Base implements Database {
         runner = new QueryRunner();
 
         try (Connection conn = getConnection()) {
-            runner.execute(conn, CREATE_TABLE1);
             runner.execute(conn, CREATE_TABLE2);
             runner.execute(conn, CREATE_TABLE3);
             runner.execute(conn, CREATE_TABLE4);
@@ -121,29 +93,15 @@ public abstract class Base implements Database {
             ex.printStackTrace();
         }
         reload();
-
-        try (Connection conn = getConnection()) {
-            if (SQLUtils.tableExists(conn, "axrewards_claimed")) {
-                new Converter3(this);
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
     }
 
     @Override
     public void reload() {
         try (Connection conn = getConnection()) {
-            for (Map.Entry<String, Menu> entry : MenuManager.getMenus().entrySet()) {
+            for (Reward reward : RewardsManager.getRewards()) {
                 try {
-                    runner.execute(conn, INSERT_MENU, entry.getKey());
+                    runner.execute(conn, INSERT_REWARD, reward.name());
                 } catch (Exception ignored) {}
-
-                for (Reward reward : entry.getValue().rewards()) {
-                    try {
-                        runner.execute(conn, INSERT_REWARD, reward.name(), getMenuId(reward.menu()));
-                    } catch (Exception ignored) {}
-                }
             }
         } catch (SQLException ex) {
             // ignore errors caused by data already existing
@@ -164,21 +122,10 @@ public abstract class Base implements Database {
     }
 
     @Override
-    public int getMenuId(Menu menu) {
-        ScalarHandler<Integer> scalarHandler = new ScalarHandler<>();
-        try (Connection conn = getConnection()) {
-            return runner.query(conn, SELECT_MENU, scalarHandler, menu.name());
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-        throw new RuntimeException("Could not find menu " + menu.name() + " in database!");
-    }
-
-    @Override
     public int getRewardId(Reward reward) {
         ScalarHandler<Integer> scalarHandler = new ScalarHandler<>();
         try (Connection conn = getConnection()) {
-            return runner.query(conn, SELECT_REWARD, scalarHandler, reward.name(), getMenuId(reward.menu()));
+            return runner.query(conn, SELECT_REWARD, scalarHandler, reward.name());
         } catch (SQLException ex) {
             ex.printStackTrace();
         }
@@ -216,15 +163,6 @@ public abstract class Base implements Database {
     public void resetReward(OfflinePlayer player, Reward reward) {
         try (Connection conn = getConnection()) {
             runner.execute(conn, RESET_REWARD_SPECIFIC, getPlayerId(player), getRewardId(reward));
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-    }
-
-    @Override
-    public void resetReward(OfflinePlayer player, Menu menu) {
-        try (Connection conn = getConnection()) {
-            runner.execute(conn, RESET_REWARD_MENU, getPlayerId(player), getMenuId(menu));
         } catch (SQLException ex) {
             ex.printStackTrace();
         }

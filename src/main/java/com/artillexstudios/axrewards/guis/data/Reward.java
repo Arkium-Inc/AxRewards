@@ -1,14 +1,13 @@
 package com.artillexstudios.axrewards.guis.data;
 
-import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
 
-public record Reward(Menu menu, String name, int slot, long cooldown, List<String> claimCommands,
-                     List<Map<?, ?>> claimItems, ItemStack claimableItem, ItemStack unclaimableItem,
-                     @Nullable String claimPermission, ItemStack noPermissionItem) {
+public record Reward(String name, int slot, long cooldown, List<String> claimCommands,
+                     List<Map<?, ?>> claimItems,
+                     @Nullable String claimPermission) {
 
     @Override
     public String toString() {
@@ -18,10 +17,7 @@ public record Reward(Menu menu, String name, int slot, long cooldown, List<Strin
                 ", cooldown=" + cooldown +
                 ", claimCommands=" + claimCommands +
                 ", claimItems=" + claimItems +
-                ", claimableItem=" + claimableItem +
-                ", unclaimableItem=" + unclaimableItem +
                 ", claimPermission='" + claimPermission + '\'' +
-                ", noPermissionItem=" + noPermissionItem +
                 '}';
     }
 }

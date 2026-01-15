@@ -13,14 +13,11 @@ import com.artillexstudios.axapi.metrics.AxMetrics;
 import com.artillexstudios.axapi.utils.MessageUtils;
 import com.artillexstudios.axapi.utils.StringUtils;
 import com.artillexstudios.axapi.utils.featureflags.FeatureFlags;
-import com.artillexstudios.axrewards.commands.CommandManager;
 import com.artillexstudios.axrewards.database.Database;
 import com.artillexstudios.axrewards.database.impl.H2;
 import com.artillexstudios.axrewards.database.impl.MySQL;
 import com.artillexstudios.axrewards.database.impl.PostgreSQL;
-import com.artillexstudios.axrewards.guis.GuiUpdater;
-import com.artillexstudios.axrewards.guis.data.MenuManager;
-import com.artillexstudios.axrewards.hooks.PlaceholderAPIHook;
+import com.artillexstudios.axrewards.guis.data.RewardsManager;
 import com.artillexstudios.axrewards.hooks.PlaceholderAPIParser;
 import com.artillexstudios.axrewards.hooks.Placeholders;
 import com.artillexstudios.axrewards.libraries.Libraries;
@@ -32,6 +29,7 @@ import revxrsal.zapper.DependencyManager;
 import revxrsal.zapper.relocation.Relocation;
 
 import java.io.File;
+import java.io.IOException;
 
 public final class AxRewards extends AxPlugin {
     public static Config CONFIG;
@@ -86,15 +84,15 @@ public final class AxRewards extends AxPlugin {
 
         threadedQueue = new ThreadedQueue<>("AxRewards-Datastore-thread");
 
-        if (FileUtils.PLUGIN_DIRECTORY.resolve("menus/").toFile().mkdirs()) {
-            if (new File(getDataFolder(), "guis.yml").exists()) {
-                new Converter2();
-            } else {
-                FileUtils.copyFromResource("menus");
+        try {
+            if (FileUtils.PLUGIN_DIRECTORY.resolve("rewards.yml").toFile().createNewFile()) {
+                FileUtils.copyFromResource("rewards.yml");
             }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
 
-        MenuManager.reload();
+        RewardsManager.reload();
 
         switch (CONFIG.getString("database.type").toLowerCase()) {
 //            case "sqlite" -> database = new SQLite();
@@ -106,16 +104,11 @@ public final class AxRewards extends AxPlugin {
         database.setup();
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new PlaceholderAPIHook().register();
             placeholderParser = new PlaceholderAPIParser();
             Bukkit.getConsoleSender().sendMessage(StringUtils.formatToString("&#FFEE00[AxRewards] Hooked into PlaceholderAPI!"));
         } else {
             placeholderParser = new Placeholders() {};
         }
-
-        GuiUpdater.start();
-
-        CommandManager.load();
 
         metrics = new AxMetrics(this, 42);
         metrics.start();
@@ -127,7 +120,6 @@ public final class AxRewards extends AxPlugin {
 
     public void disable() {
         if (metrics != null) metrics.cancel();
-        GuiUpdater.stop();
         database.disable();
     }
 
